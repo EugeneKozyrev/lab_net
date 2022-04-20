@@ -70,6 +70,8 @@ int main() {
 		std::cout << "Your (Client) message to Server: ";
 		fgets(clientBuff.data(), clientBuff.size(), stdin);
 
+		packet_size = send(ClientSock, clientBuff.data(), clientBuff.size(), 0);
+
 		// Check whether client like to stop chatting 
 		if (clientBuff[0] == 'e' && clientBuff[1] == 'o' && clientBuff[2] == 'l') {
 			shutdown(ClientSock, SD_BOTH);
@@ -79,8 +81,6 @@ int main() {
 			getchar();	
 			exit(0);
 		}
-
-		packet_size = send(ClientSock, clientBuff.data(), clientBuff.size(), 0);
 
 		if (packet_size == SOCKET_ERROR) {
 			std::cout << ERR_MSG << "Can't send message to Server. Error # " << WSAGetLastError() << '\n';
