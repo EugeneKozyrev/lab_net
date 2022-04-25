@@ -1,139 +1,121 @@
 #include <iostream>
+#include <stdio.h>
 #include <winsock2.h>
 #include <conio.h>
-#include <string>
+#include <ws2tcpip.h>
 #include <vector>
+#include <string>
+#include <windows.h>
 
-#pragma comment(lib, "Ws2_32.lib")
+#pragma comment(lib, "Ws2_32.lib")// подключили библиотеку
+#define SERVER_PORT 3820
 
-int main() {
+using namespace std;
 
-	// Messages
-	const std::string ERR_MSG = "Error: ";
-	const std::string INF_MSG = "Info: ";
-	const std::string WR_MSG = "Warning: ";
+DWORD WINAPI soketsoket(LPVOID lpParam) {
 
-	// Key constants
-	const char SERVER_ADDR[] = "localhost";		// Enter local Server IP address
-	const int SERVER_PORT = 3820;				// Enter Open working server port
-	const short BUFF_SIZE = 1024;				// Maximum size of buffer for exchange info between server and client
+    SOCKET Conn=*(SOCKET*) lpParam;
 
-	// Custom addres cannot be used
-	// DWORD ip = inet_addr(SERVER_ADDR); 
+    char buf_in[20];
+    char exit[20] = "s";
+    char buf_out[34] = "Hello from Server!";
+    int bytes = 0;
+    while (1)
+    {
 
-	int iResult;
+        bytes = recv(Conn, (char *)buf_in, sizeof(buf_in), 0);//принял информацию в буфер
+        std::cout << buf_in << endl;
 
-	WSADATA wsaData;
+        if (bytes == SOCKET_ERROR) {
+            std::cout << "not sent";
+            break;
 
-	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+        }
+        if (buf_in[0] == 's') {
+            send(Conn, (char *)exit, sizeof(exit), 0);
+            break;
+        }
+        send(Conn, (char *)buf_out, sizeof(buf_out), 0);
+    }
+    return 0;
+}
 
-	if (iResult < 0) {
-		std::cout << ERR_MSG << "WinSock initialization was failed" << '\n';
-		std::cout << ERR_MSG << WSAGetLastError() << '\n';
-		getchar();
-		exit(0);
-	} else
-		std::cout << INF_MSG << "WinSock initialization is OK" << '\n';
+int main()
+{
+    setlocale(LC_CTYPE, "Russian"); // включаем русскую кодировку
 
-
-	SOCKET SrvSock = socket(AF_INET, SOCK_STREAM, 0);
-
-	if (SrvSock == INVALID_SOCKET) {
-		std::cout << ERR_MSG << "WinSock initialization was failed" << '\n';
-		std::cout << ERR_MSG << WSAGetLastError() << '\n'; 
-		closesocket(SrvSock);
-		WSACleanup();
-		getchar();
-		exit(0);
-	}
-	else
-		std::cout << INF_MSG << "Server socket initialization is OK" << '\n';
+    struct sockaddr_in SrvAddr;     // Адресная структура сервера
 
 
-	struct sockaddr_in SrvAddr;
-	ZeroMemory(&SrvAddr, sizeof(SrvAddr));
 
-	SrvAddr.sin_family = AF_INET;
-	SrvAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	SrvAddr.sin_port = htons(SERVER_PORT);
+    SOCKET SrvSock, Conn;
 
-	iResult = bind(SrvSock, (sockaddr *)&SrvAddr, sizeof SrvAddr);
+    WSADATA wsaData;  // для работы Windows с сокетами
+    int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData); // запустили библиотеку
+    if (iResult < 0)
+    {
+        std:: cout << "error" << endl;
+        getchar();
+        exit(0);
+    }
 
-	if ( iResult != 0 ) {
-		std::cout << ERR_MSG << "Socket binding to server info. Error # " << WSAGetLastError() << '\n';
-		closesocket(SrvSock);
-		WSACleanup();
-		getchar();
-		exit(0);
-	}
-	else 
-		std::cout << INF_MSG << "Binding socket to Server info is OK" << '\n';
 
-	iResult = listen(SrvSock, 5); 
+    SrvSock = socket(AF_INET, SOCK_STREAM, 0);//Создаем  сокет сервера
 
-	if ( iResult != 0 ) {
-		std::cout << ERR_MSG << "Can't start to listen to. Error # " << WSAGetLastError() << '\n';
-		closesocket(SrvSock);
-		WSACleanup();
-		getchar();
-		exit(0);
-	}
-	else 
-		std::cout << " ------- ...Server is up to state... ------- " << '\n';
+    //Задаем адрес сервера
+    SrvAddr.sin_family = AF_INET;
+    SrvAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);// 127.0.0.1
+    SrvAddr.sin_port = htons(SERVER_PORT);
+    //Настраиваем сокет
+    bind(SrvSock, (sockaddr *)&SrvAddr, sizeof SrvAddr);
 
-	struct sockaddr_in ConnAddr;
-	ZeroMemory(&ConnAddr, sizeof(ConnAddr));
-	
-	int ConnAddr_size = sizeof(ConnAddr);
+    //Слушаем
+    listen(SrvSock, 5);
 
-	std::vector<char> servBuff(BUFF_SIZE);
-	std::vector<char> clientBuff(BUFF_SIZE);
+    struct sockaddr_in ConnAddr;  // Адресная структура клиента
+    memset(&ConnAddr, 0, sizeof(ConnAddr));
 
-	SOCKET Conn;
+    printf("...Server is running...\n");
+    int AddrLen = sizeof(ConnAddr);
+    char buf_in[20];
+    char exit[20] = "s";
+    char buf_out[34] = "Hello from server!";
+    int nsize;
+    int bytes = 0;
+    bool stop = false;
 
-	short packet_size = 0;
+    DWORD ThreadId;
+    INT ThreadParameter = 19;
+    HANDLE hThread;
 
-	while(true){
+    while (1) {
+        Conn = accept(SrvSock, (struct sockaddr *) &ConnAddr, &AddrLen);
+        //Ждем очередного клиента
+        
 
-		Conn = accept(SrvSock, (struct sockaddr *) &ConnAddr, &ConnAddr_size);
+        
+        // создаем поток
+        hThread = CreateThread(
+            NULL,              // атрибуты безопасности по умолчанию
+            0,                 // размер стека по умолчанию  
+            soketsoket,        // указатель на процедуру создаваемого потока
+            &Conn,  // аргумент, передаваемый функции потока
+            0,                 // флаги создания по умолчанию
+            &ThreadId);        // возвращаемый идентификатор потока
 
-		if (Conn == INVALID_SOCKET) {
-			std::cout << ERR_MSG << "Client detected, but can't connect to a client. Error # " << WSAGetLastError() << '\n';
-			closesocket(SrvSock);
-			closesocket(Conn);
-			WSACleanup();
-			getchar();
-			exit(0);
-		} else
-			std::cout << INF_MSG << "Connection to a client established successfully" << '\n';
+        if (hThread == NULL)  printf("CreateThread failed.");
 
-		while(true) {
-			packet_size = recv(Conn, servBuff.data(), servBuff.size(), 0);
-			std::cout << "Client's message: " << servBuff.data() << '\n';
+        
+        
+    }
+    CloseHandle(hThread);
 
-			if (servBuff[0] == 'e' && servBuff[1] == 'o' && servBuff[2] == 'l') {
-				std::cout << INF_MSG << "Connection disabled: eol" << '\n';
-				break;
-			}
 
-			std::cout << "Your (host) message: ";
-			fgets(clientBuff.data(), clientBuff.size(), stdin);
+        shutdown(Conn, 2); // запретили передачу и прием сообщений
+        closesocket(Conn); //закрыли=разрушили сокет
 
-			packet_size = send(Conn, clientBuff.data(), clientBuff.size(), 0);
-
-			if (packet_size == SOCKET_ERROR) {
-				std::cout << INF_MSG << "Connection disabled" << '\n';
-				break;
-			}
-		}
-
-		closesocket(SrvSock);
-		closesocket(Conn);
-		WSACleanup();
-	}
-
-	std::cout << '\n' << INF_MSG <<  "Exit from the server part" << '\n';
-	getchar();
-	
-	return 0;
+    
+    std:: cout << endl << "Out of server program" << endl;
+    getchar();
+    return 0;
 }
