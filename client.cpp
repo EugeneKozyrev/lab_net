@@ -17,7 +17,6 @@ DWORD WINAPI Soket_listener(LPVOID lpParam) {
     while (1) {
         // Получили сообщение
         bytes = recv(ClientSock, (char*)rez, sizeof(rez), 0);
-        cout << "\n*** Soket_listener ***" << endl;
         if (bytes == SOCKET_ERROR) {
             cout << endl << "bytes == SOCKET_ERROR" << endl;
             break;

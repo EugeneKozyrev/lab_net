@@ -34,7 +34,7 @@ DWORD WINAPI soketsoket(LPVOID lpParam) {
         cout << buf_in << endl;
 
         for (int i = 0; i <= index; ++i) {
-            send(socket_arr[i], (char *)buf_out, sizeof(buf_out), 0);
+            send(socket_arr[i], (char *)buf_in, sizeof(buf_in), 0);
         }
 
         if (buf_in[0] == 's')
