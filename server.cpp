@@ -3,86 +3,75 @@
 #include <winsock2.h>
 #include <conio.h>
 #include <ws2tcpip.h>
-#include <vector>
-#include <string>
 #include <windows.h>
 
-#pragma comment(lib, "Ws2_32.lib")// подключили библиотеку
+#pragma comment(lib, "Ws2_32.lib")
 #define SERVER_PORT 3820
+
+int index = -1;
 
 using namespace std;
 
+SOCKET socket_arr[256];
+// HANDLE handle_arr[256];
+
 DWORD WINAPI soketsoket(LPVOID lpParam) {
 
-    SOCKET Conn=*(SOCKET*) lpParam;
+    int index_soc = *(int*)lpParam;
 
     char buf_in[20];
     char exit[20] = "s";
-    char buf_out[34] = "Hello from Server!";
+    char buf_out[34] = "Response from server";
     int bytes = 0;
-    while (1)
-    {
-
-        bytes = recv(Conn, (char *)buf_in, sizeof(buf_in), 0);//принял информацию в буфер
-        std::cout << buf_in << endl;
+    while (1) {
+        bytes = recv(socket_arr[index_soc], (char *)buf_in, sizeof(buf_in), 0);
 
         if (bytes == SOCKET_ERROR) {
-            std::cout << "not sent";
+            cout << "bytes == SOCKET_ERROR" << endl;
             break;
+        }
 
+        cout << buf_in << endl;
+
+        for (int i = 0; i <= index; ++i) {
+            send(socket_arr[i], (char *)buf_out, sizeof(buf_out), 0);
         }
-        if (buf_in[0] == 's') {
-            send(Conn, (char *)exit, sizeof(exit), 0);
+
+        if (buf_in[0] == 's')
             break;
-        }
-        send(Conn, (char *)buf_out, sizeof(buf_out), 0);
     }
     return 0;
 }
 
-int main()
-{
-    setlocale(LC_CTYPE, "Russian"); // включаем русскую кодировку
+int main() {
+    setlocale(LC_CTYPE, "Russian");
 
-    struct sockaddr_in SrvAddr;     // Адресная структура сервера
-
-
-
+    struct sockaddr_in SrvAddr;
     SOCKET SrvSock, Conn;
 
-    WSADATA wsaData;  // для работы Windows с сокетами
-    int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData); // запустили библиотеку
-    if (iResult < 0)
-    {
-        std:: cout << "error" << endl;
+    WSADATA wsaData;
+    int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (iResult < 0) {
+        cout << "WSAStartup failed" << endl;
         getchar();
         exit(0);
     }
 
+    SrvSock = socket(AF_INET, SOCK_STREAM, 0);
 
-    SrvSock = socket(AF_INET, SOCK_STREAM, 0);//Создаем  сокет сервера
-
-    //Задаем адрес сервера
     SrvAddr.sin_family = AF_INET;
-    SrvAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);// 127.0.0.1
+    SrvAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     SrvAddr.sin_port = htons(SERVER_PORT);
-    //Настраиваем сокет
+
     bind(SrvSock, (sockaddr *)&SrvAddr, sizeof SrvAddr);
 
-    //Слушаем
     listen(SrvSock, 5);
 
-    struct sockaddr_in ConnAddr;  // Адресная структура клиента
+    struct sockaddr_in ConnAddr;
     memset(&ConnAddr, 0, sizeof(ConnAddr));
 
-    printf("...Server is running...\n");
+    cout << "...Server is running..." << endl;
     int AddrLen = sizeof(ConnAddr);
-    char buf_in[20];
-    char exit[20] = "s";
-    char buf_out[34] = "Hello from server!";
-    int nsize;
-    int bytes = 0;
-    bool stop = false;
 
     DWORD ThreadId;
     INT ThreadParameter = 19;
@@ -90,32 +79,29 @@ int main()
 
     while (1) {
         Conn = accept(SrvSock, (struct sockaddr *) &ConnAddr, &AddrLen);
-        //Ждем очередного клиента
+        if (Conn == INVALID_SOCKET) {
+            cout << "Conn == INVALID_SOCKET" << endl;
+        } else {
+            index++;
+            socket_arr[index] = Conn;
+        }
         
-
-        
-        // создаем поток
         hThread = CreateThread(
             NULL,              // атрибуты безопасности по умолчанию
             0,                 // размер стека по умолчанию  
             soketsoket,        // указатель на процедуру создаваемого потока
-            &Conn,  // аргумент, передаваемый функции потока
+            &index,            // аргумент, передаваемый функции потока
             0,                 // флаги создания по умолчанию
             &ThreadId);        // возвращаемый идентификатор потока
-
-        if (hThread == NULL)  printf("CreateThread failed.");
-
-        
-        
+        if (hThread == NULL) cout << endl << "CreateThread failed" << endl;
     }
+
     CloseHandle(hThread);
 
+    shutdown(Conn, 2);
+    closesocket(Conn);
 
-        shutdown(Conn, 2); // запретили передачу и прием сообщений
-        closesocket(Conn); //закрыли=разрушили сокет
-
-    
-    std:: cout << endl << "Out of server program" << endl;
+    std::cout << endl << "Server down" << endl;
     getchar();
     return 0;
 }
