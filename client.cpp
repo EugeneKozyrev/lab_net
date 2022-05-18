@@ -13,7 +13,7 @@ using namespace std;
 DWORD WINAPI Soket_listener(LPVOID lpParam) {
     SOCKET ClientSock = *(SOCKET*)lpParam;
     int bytes = 0;
-    char rez[34];
+    char rez[256];
     while (1) {
         // Получили сообщение
         bytes = recv(ClientSock, (char*)rez, sizeof(rez), 0);
@@ -23,6 +23,8 @@ DWORD WINAPI Soket_listener(LPVOID lpParam) {
         }
         else cout << rez << endl;
     }
+    shutdown(ClientSock, 2);
+    closesocket(ClientSock);
     return 0;
 }
 
@@ -51,7 +53,7 @@ int main() {
     HANDLE hThread;
     DWORD ThreadId;
 
-    char buf[20];
+    char buf[256];
 
     int u = connect(ClientSock, (struct sockaddr*)&Addr, sizeof(Addr));
     if (u == INVALID_SOCKET) {

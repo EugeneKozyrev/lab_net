@@ -19,26 +19,30 @@ DWORD WINAPI soketsoket(LPVOID lpParam) {
 
     int index_soc = *(int*)lpParam;
 
-    char buf_in[20];
-    char exit[20] = "s";
-    char buf_out[34] = "Response from server";
+    char buf_in[256];
+    char exit[256] = "s";
+    char buf_out[256] = "Response from server";
     int bytes = 0;
     while (1) {
         bytes = recv(socket_arr[index_soc], (char *)buf_in, sizeof(buf_in), 0);
 
-        if (bytes == SOCKET_ERROR) {
-            cout << "bytes == SOCKET_ERROR" << endl;
+        if (bytes == -1) {
+            cout << "bytes == -1" << endl;
             break;
         }
 
         cout << buf_in << endl;
 
         for (int i = 0; i <= index; ++i) {
-            send(socket_arr[i], (char *)buf_in, sizeof(buf_in), 0);
+            if (socket_arr[i] != NULL) {
+                send(socket_arr[i], (char *)buf_in, sizeof(buf_in), 0);
+            }
         }
 
-        if (buf_in[0] == 's')
+        if (buf_in[0] == 's'){
+            socket_arr[index_soc] = NULL;
             break;
+        }
     }
     return 0;
 }
